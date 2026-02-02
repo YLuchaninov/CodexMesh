@@ -1,0 +1,94 @@
+{
+    "id": "intent.dead_code",
+    "version": 1,
+    "name": "Dead code detection",
+    "description": "Find likely dead code using entrypoint reachability and conservative heuristics.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mode": {
+                "type": "string",
+                "enum": [
+                    "conservative",
+                    "aggressive"
+                ],
+                "default": "conservative"
+            },
+            "max_depth": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 50,
+                "default": 20
+            },
+            "max_nodes": {
+                "type": "integer",
+                "minimum": 500,
+                "maximum": 20000,
+                "default": 6000
+            }
+        }
+    },
+    "examples": [
+        "Find dead code",
+        "Show me unused functions",
+        "Dead code report"
+    ],
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "entrypoints_list",
+            "params": {
+                "limit": 200
+            },
+            "save_as": "entrypoints"
+        },
+        {
+            "action": "tool",
+            "tool_name": "compute_reachable_set",
+            "params": {
+                "roots": "{{entrypoints.entrypoints[*].id}}",
+                "edge_types": [
+                    "calls",
+                    "imports",
+                    "contains"
+                ],
+                "max_depth": "{{input.max_depth}}",
+                "max_nodes": "{{input.max_nodes}}"
+            },
+            "save_as": "reachable"
+        },
+        {
+            "action": "tool",
+            "tool_name": "dead_code_candidates",
+            "params": {
+                "reachable_ids": "{{reachable.reachable_ids}}",
+                "mode": "{{input.mode}}"
+            },
+            "save_as": "candidates"
+        },
+        {
+            "action": "compose",
+            "template": [
+                "# Dead code report",
+                "",
+                "## Mode: {{input.mode}}",
+                "",
+                "## Reachability Analysis",
+                "- Entrypoints found: {{entrypoints.count}}",
+                "- Reachable nodes: {{reachable.reachable_count}}",
+                "",
+                "## Candidates",
+                "{{candidates.likely_dead_md}}",
+                "",
+                "## Next Steps",
+                "- Use `entrypoints_list` to verify call entrypoints are detected.",
+                "- Run dynamic tracing to find runtime usage."
+            ],
+            "save_as": "answer_md"
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

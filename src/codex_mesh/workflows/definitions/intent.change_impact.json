@@ -1,0 +1,124 @@
+{
+    "id": "intent.change_impact",
+    "version": 1,
+    "name": "Change impact analysis",
+    "description": "Estimate blast radius if a symbol changes (reverse callers + import dependents + entrypoints reachability).",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "symbol": {
+                "type": "string"
+            },
+            "depth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8,
+                "default": 4
+            },
+            "max_nodes": {
+                "type": "integer",
+                "minimum": 50,
+                "maximum": 2000,
+                "default": 800
+            }
+        },
+        "required": [
+            "symbol"
+        ]
+    },
+    "examples": [
+        "If I touch CodeGraphBuilder what breaks?",
+        "Impact of changing login_user function",
+        "Who depends on verify_token?"
+    ],
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.symbol}}",
+                "prefer_types": [
+                    "function",
+                    "class",
+                    "file"
+                ],
+                "limit": 10
+            },
+            "save_as": "target"
+        },
+        {
+            "action": "branch",
+            "condition": "{{target.best}}",
+            "steps": [
+                {
+                    "action": "tool",
+                    "tool_name": "get_subgraph",
+                    "params": {
+                        "roots": [
+                            "{{target.best.id}}"
+                        ],
+                        "direction": "in",
+                        "depth": "{{input.depth}}",
+                        "edge_types": [
+                            "calls",
+                            "imports"
+                        ],
+                        "max_nodes": "{{input.max_nodes}}"
+                    },
+                    "save_as": "reverse_deps"
+                }
+            ],
+            "else": [
+                {
+                    "action": "return",
+                    "value": "Symbol '{{input.symbol}}' not found."
+                }
+            ]
+        },
+        {
+            "action": "tool",
+            "tool_name": "entrypoints_list",
+            "params": {
+                "limit": 60
+            },
+            "save_as": "entrypoints"
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{reverse_deps.nodes}}",
+                "edges": "{{reverse_deps.edges}}"
+            },
+            "save_as": "impact_graph_mermaid"
+        },
+        {
+            "action": "compose",
+            "template": [
+                "# Change impact analysis",
+                "",
+                "## Target",
+                "- **{{target.best.name}}** ({{target.best.type}})",
+                "- `{{target.best.file_path}}:{{target.best.line_start}}`",
+                "",
+                "## Impact Summary",
+                "- **Direct callers/dependents**: {{reverse_deps.nodes|length}} nodes found in reverse graph (depth {{input.depth}}).",
+                "",
+                "## Impact graph (Mermaid)",
+                "```mermaid",
+                "{{impact_graph_mermaid.content}}",
+                "```",
+                "",
+                "## Recommended safe steps",
+                "- Add/extend tests around the top impacted callers.",
+                "- Change in small increments."
+            ],
+            "save_as": "answer_md"
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

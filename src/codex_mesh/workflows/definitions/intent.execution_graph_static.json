@@ -1,0 +1,117 @@
+{
+    "id": "intent.execution_graph_static",
+    "version": 1,
+    "name": "Execution graph (static)",
+    "description": "Pick the most relevant entrypoint for a described feature and build a calls subgraph.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "feature_query": {
+                "type": "string"
+            },
+            "depth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 5
+            },
+            "max_nodes": {
+                "type": "integer",
+                "minimum": 50,
+                "maximum": 3000,
+                "default": 1200
+            }
+        },
+        "required": [
+            "feature_query"
+        ]
+    },
+    "examples": [
+        "Show call graph for login feature",
+        "Trace execution of data export",
+        "What happens when I run the server?"
+    ],
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "entrypoints_list",
+            "params": {
+                "limit": 120
+            },
+            "save_as": "entrypoints"
+        },
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.feature_query}}",
+                "limit": 5
+            },
+            "save_as": "chosen"
+        },
+        {
+            "action": "branch",
+            "condition": "{{chosen.best}}",
+            "steps": [
+                {
+                    "action": "tool",
+                    "tool_name": "get_subgraph",
+                    "params": {
+                        "roots": [
+                            "{{chosen.best.id}}"
+                        ],
+                        "direction": "out",
+                        "depth": "{{input.depth}}",
+                        "edge_types": [
+                            "calls"
+                        ],
+                        "max_nodes": "{{input.max_nodes}}"
+                    },
+                    "save_as": "exec_graph"
+                }
+            ],
+            "else": [
+                {
+                    "action": "return",
+                    "value": "Could not find entrypoint for '{{input.feature_query}}'."
+                }
+            ]
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{exec_graph.nodes}}",
+                "edges": "{{exec_graph.edges}}"
+            },
+            "save_as": "exec_mermaid"
+        },
+        {
+            "action": "compose",
+            "template": [
+                "# Execution graph (static)",
+                "",
+                "## Feature query",
+                "- {{input.feature_query}}",
+                "",
+                "## Chosen entrypoint",
+                "- **{{chosen.best.name}}** ({{chosen.best.type}})",
+                "- `{{chosen.best.file_path}}`",
+                "",
+                "## Calls graph (Mermaid)",
+                "```mermaid",
+                "{{exec_mermaid.content}}",
+                "```",
+                "",
+                "## Notes",
+                "- This is a static approximation based on CALLS edges."
+            ],
+            "save_as": "answer_md"
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

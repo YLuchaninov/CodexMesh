@@ -1,0 +1,101 @@
+{
+    "id": "intent.graph_dependency_tree",
+    "version": 1,
+    "name": "Dependency tree",
+    "description": "Build an inbound/outbound dependency tree for a symbol.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "symbol": {
+                "type": "string"
+            },
+            "direction": {
+                "type": "string",
+                "enum": [
+                    "in",
+                    "out"
+                ],
+                "default": "out"
+            },
+            "depth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8,
+                "default": 3
+            },
+            "edge_types": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "calls",
+                        "imports",
+                        "contains"
+                    ]
+                },
+                "default": [
+                    "imports",
+                    "calls",
+                    "contains"
+                ]
+            }
+        },
+        "required": [
+            "symbol"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.symbol}}",
+                "limit": 10
+            },
+            "save_as": "r"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_dependency_tree",
+            "params": {
+                "root_id": "{{r.best.id}}",
+                "direction": "{{input.direction}}",
+                "depth": "{{input.depth}}",
+                "edge_types": "{{input.edge_types}}"
+            },
+            "save_as": "tree"
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{tree.nodes}}",
+                "edges": "{{tree.edges}}"
+            },
+            "save_as": "mermaid"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Dependency tree",
+                "",
+                "## Root",
+                "- {{r.best.qualified_name}}",
+                "",
+                "## Direction / depth",
+                "- {{input.direction}} / {{input.depth}}",
+                "",
+                "## Graph (Mermaid)",
+                "```mermaid",
+                "{{mermaid.content}}",
+                "```"
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

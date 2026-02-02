@@ -1,0 +1,135 @@
+{
+    "id": "intent.refactor_guidance",
+    "version": 3,
+    "name": "Refactor guidance",
+    "description": "Provide a refactor plan grounded in graph structure, hotspot signals, and entrypoint paths.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "target": {
+                "type": "string"
+            },
+            "depth": {
+                "type": "integer",
+                "default": 3
+            },
+            "max_nodes": {
+                "type": "integer",
+                "default": 900
+            }
+        },
+        "required": [
+            "target"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.target}}",
+                "prefer_types": [
+                    "function",
+                    "class",
+                    "file"
+                ],
+                "limit": 10
+            },
+            "save_as": "t"
+        },
+        {
+            "action": "branch",
+            "condition": "{{t.best}}",
+            "steps": [
+                {
+                    "action": "tool",
+                    "tool_name": "build_call_graph",
+                    "params": {
+                        "roots": [
+                            "{{t.best.id}}"
+                        ],
+                        "direction": "in",
+                        "depth": 3,
+                        "max_nodes": 200
+                    },
+                    "save_as": "callers"
+                },
+                {
+                    "action": "tool",
+                    "tool_name": "build_call_graph",
+                    "params": {
+                        "roots": [
+                            "{{t.best.id}}"
+                        ],
+                        "direction": "out",
+                        "depth": 2,
+                        "max_nodes": 200
+                    },
+                    "save_as": "callees"
+                },
+                {
+                    "action": "tool",
+                    "tool_name": "find_entrypoint_paths",
+                    "params": {
+                        "target_id": "{{t.best.id}}",
+                        "limit": 10,
+                        "max_hops": 8
+                    },
+                    "save_as": "eps"
+                }
+            ],
+            "else": [
+                {
+                    "action": "return",
+                    "value": "Target scope '{{input.target}}' not found."
+                }
+            ]
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_hotspot",
+            "params": {
+                "path": "{{t.best.file_path}}"
+            },
+            "save_as": "hot"
+        },
+        {
+            "action": "compose",
+            "template": [
+                "# Refactor Guidance: {{t.best.name}}",
+                "",
+                "## Summary",
+                "Reviewing refactor impact for `{{t.best.file_path}}` ({{t.best.type}}).",
+                "Hotspot Score: {{hot.report[0].total|float}} ({{hot.report[0].issues|length}} issues).",
+                "",
+                "## Execution Map",
+                "### Caller Graph (Inbound Impact)",
+                "```mermaid",
+                "{{callers.mermaid}}",
+                "```",
+                "",
+                "## Evidence",
+                "- **Blast Radius:** {{callers.stats.node_count}} direct/indirect callers will be affected.",
+                "- **Complexity:** {{callees.stats.node_count}} dependencies detected in callees graph.",
+                "- **Criticality:** Found {{eps.paths|length}} paths from entrypoints to this node.",
+                "  {% for p in eps.paths[:3] %}",
+                "  - From `{{p.entrypoint}}`: {{p.length}} hops",
+                "  {% endfor %}",
+                "",
+                "## Proposed Plan",
+                "1. **Isolate**: Ensure `{{t.best.name}}` has clear interfaces and no side-effects.",
+                "2. **Safeguard**: Add/verify integration tests for the found top entrypoint paths.",
+                "3. **Refactor**: Simplify logic to reduce the hotspot score from {{hot.report[0].total|float}}.",
+                "",
+                "## Next Steps",
+                "- Use `read_span` to inspect implementation details of high-risk callers.",
+                "- Use `intent.change_impact` to verify the proposed changes."
+            ],
+            "save_as": "answer_md"
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

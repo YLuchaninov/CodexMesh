@@ -1,0 +1,91 @@
+{
+    "id": "intent.execution_graph_dynamic",
+    "version": 1,
+    "name": "Execution graph (dynamic)",
+    "description": "Collect runtime call traces for a scenario and map them onto the code graph.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "scenario": {
+                "type": "string",
+                "description": "How to run the feature (e.g., route name, CLI command, test name)."
+            },
+            "duration_sec": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 300,
+                "default": 20
+            }
+        },
+        "required": [
+            "scenario"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "trace_start",
+            "params": {
+                "scenario": "{{input.scenario}}"
+            },
+            "save_as": "trace"
+        },
+        {
+            "action": "tool",
+            "tool_name": "trace_wait",
+            "params": {
+                "trace_id": "{{trace.id}}",
+                "duration_sec": "{{input.duration_sec}}"
+            },
+            "save_as": "trace_done"
+        },
+        {
+            "action": "tool",
+            "tool_name": "trace_stop",
+            "params": {
+                "trace_id": "{{trace.id}}"
+            },
+            "save_as": "stopped"
+        },
+        {
+            "action": "tool",
+            "tool_name": "trace_to_subgraph",
+            "params": {
+                "trace": "{{trace_done}}"
+            },
+            "save_as": "g"
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{g.nodes}}",
+                "edges": "{{g.edges}}"
+            },
+            "save_as": "mermaid"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Execution graph (dynamic)",
+                "",
+                "## Scenario",
+                "- {{input.scenario}}",
+                "",
+                "## Graph (Mermaid)",
+                "```mermaid",
+                "{{mermaid.content}}",
+                "```",
+                "",
+                "## Note",
+                "- Dynamic tracing is experimental."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

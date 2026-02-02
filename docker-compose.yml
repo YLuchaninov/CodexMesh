@@ -1,0 +1,55 @@
+# CodexMesh Docker Compose
+# Provides separate services for web (HTTP/UI) and MCP (stdio)
+
+services:
+  # Web service: HTTP API + Frontend UI
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    container_name: codexmesh-web
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the project to analyze (set via PROJECT_PATH env var)
+      - ${PROJECT_PATH:-.}:/workspace:ro
+      # Persist all system data (Graph, Index, Config)
+      - codexmesh-data:/data
+      # Persist FastEmbed model cache
+      - fastembed-cache:/home/codexmesh/.cache/fastembed
+    environment:
+      - CODEX_MESH_PROJECT_ROOT=/workspace
+      - CODEX_MESH_STORAGE_PATH=/data
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # MCP service: stdio server (use with docker exec or attach)
+  mcp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mcp
+    container_name: codexmesh-mcp
+    profiles:
+      - mcp # Only start with: docker compose --profile mcp up mcp
+    volumes:
+      - ${PROJECT_PATH:-.}:/workspace:ro
+      - codexmesh-data:/data
+      - fastembed-cache:/home/codexmesh/.cache/fastembed
+    environment:
+      - CODEX_MESH_PROJECT_ROOT=/workspace
+      - CODEX_MESH_STORAGE_PATH=/data
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    stdin_open: true
+    tty: true
+
+volumes:
+  codexmesh-data:
+  fastembed-cache:

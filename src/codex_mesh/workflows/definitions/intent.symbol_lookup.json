@@ -1,0 +1,91 @@
+{
+    "id": "intent.symbol_lookup",
+    "version": 1,
+    "name": "Symbol lookup",
+    "description": "Resolve a symbol and show definition, location, and basic neighborhood.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "symbol": {
+                "type": "string"
+            },
+            "include_body": {
+                "type": "boolean",
+                "default": false
+            }
+        },
+        "required": [
+            "symbol"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.symbol}}",
+                "limit": 10
+            },
+            "save_as": "resolved"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_symbol_info",
+            "params": {
+                "name_or_id": "{{resolved.best.id}}",
+                "include_body": "{{input.include_body}}"
+            },
+            "save_as": "info"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_subgraph",
+            "params": {
+                "roots": [
+                    "{{resolved.best.id}}"
+                ],
+                "direction": "both",
+                "depth": 1,
+                "edge_types": [
+                    "contains",
+                    "imports"
+                ]
+            },
+            "save_as": "nb"
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{nb.nodes}}",
+                "edges": "{{nb.edges}}"
+            },
+            "save_as": "nb_mermaid"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Symbol lookup",
+                "",
+                "## Best match",
+                "- {{resolved.best.qualified_name}}",
+                "- {{resolved.best.file_path}}:{{resolved.best.span.start_line}}-{{resolved.best.span.end_line}}",
+                "- Confidence: {{resolved.confidence}}",
+                "",
+                "## Definition summary",
+                "{{info.summary_md}}",
+                "",
+                "## Neighborhood (Mermaid)",
+                "```mermaid",
+                "{{nb_mermaid.content}}",
+                "```"
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

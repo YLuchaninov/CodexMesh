@@ -1,0 +1,83 @@
+{
+    "id": "intent.architecture_consistency",
+    "version": 1,
+    "name": "Architecture consistency check",
+    "description": "Check whether implementation matches intended architecture: layering, cycles, missing components, boundary violations.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ruleset": {
+                "type": "string",
+                "default": "default"
+            },
+            "max_nodes": {
+                "type": "integer",
+                "minimum": 200,
+                "maximum": 20000,
+                "default": 6000
+            }
+        }
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "get_repo_map_raw",
+            "params": {
+                "token_budget": 1600
+            },
+            "save_as": "repomap"
+        },
+        {
+            "action": "tool",
+            "tool_name": "build_module_graph",
+            "params": {
+                "max_nodes": "{{input.max_nodes}}"
+            },
+            "save_as": "mg"
+        },
+        {
+            "action": "tool",
+            "tool_name": "detect_cycles",
+            "params": {
+                "edges": "{{mg.edges}}",
+                "edge_types": [
+                    "imports"
+                ]
+            },
+            "save_as": "cycles"
+        },
+        {
+            "action": "tool",
+            "tool_name": "check_layering_rules",
+            "params": {
+                "ruleset": "{{input.ruleset}}",
+                "module_graph": "{{mg}}"
+            },
+            "save_as": "violations"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Architecture consistency",
+                "",
+                "## Repo map",
+                "{{repomap.map}}",
+                "",
+                "## Import cycles",
+                "{{cycles.summary_md}}",
+                "",
+                "## Layering / boundary violations",
+                "{{violations.markdown}}",
+                "",
+                "## Recommendations",
+                "- Break import cycles first (lowest-risk structural change).",
+                "- Enforce boundaries with a checker in CI."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

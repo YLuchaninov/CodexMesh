@@ -1,0 +1,125 @@
+[project]
+name = "codex-mesh"
+version = "0.1.0"
+description = "MCP server for semantic code analysis - CodexMesh system"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Polyform Noncommercial License 1.0.0" }
+authors = [{ name = "CodexMesh Team" }]
+
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "tree-sitter>=0.22.0,<0.24.0",
+    "tree-sitter-python>=0.22.0,<0.24.0",
+    "tree-sitter-language-pack>=0.7.0,<0.8.0",
+    "sqlglot>=25.0.0",
+    "rustworkx>=0.14.0",
+    "lancedb>=0.5.0,<0.28.0",
+    "fastembed>=0.2.0,<0.5.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "watchfiles>=0.21.0",
+    "ruff>=0.3.0",
+    "pathspec>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "sse-starlette>=2.0",
+    "langchain>=0.2",
+    "langchain-core>=0.2",
+    "langchain-google-genai>=2.0",
+]
+web = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "sse-starlette>=2.0",
+]
+
+# Base LLM dependencies (langchain core) - required for any LLM provider
+llm-core = [
+    "langchain>=0.2,<0.4",
+    "langchain-core>=0.2,<0.4",
+]
+
+# Per-provider LLM extras (P3 fix: granular dependencies)
+llm-google = [
+    "codex-mesh[llm-core]",
+    "langchain-google-genai>=2.0,<3.0",
+]
+llm-anthropic = [
+    "codex-mesh[llm-core]",
+    "langchain-anthropic>=0.2,<0.4",
+]
+llm-openai = [
+    "codex-mesh[llm-core]",
+    "langchain-openai>=0.2,<0.4",
+]
+llm-mistral = [
+    "codex-mesh[llm-core]",
+    "langchain-mistralai>=0.2,<0.4",
+]
+llm-ollama = [
+    "codex-mesh[llm-core]",
+    "langchain-community>=0.2,<0.4",
+]
+
+# Backward-compatible alias for original llm extra
+llm = [
+    "codex-mesh[llm-core]",
+    "codex-mesh[llm-google]",
+]
+
+[project.entry-points."codex_mesh.extractors"]
+# Plugin system: External packages can register extractors here.
+# example = "my_package.extractors:MyExtractor"
+
+[project.scripts]
+codex-mesh = "codex_mesh.api.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/codex_mesh/**",
+    "README.md",
+    "docs/HOWTOUSE.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codex_mesh"]
+artifacts = ["src/codex_mesh/web/static/dist"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/codex_mesh/web/static" = "codex_mesh/web/static"
+"src/codex_mesh/workflows/definitions" = "codex_mesh/workflows/definitions"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+exclude = ["tests"]
+ignore_missing_imports = true

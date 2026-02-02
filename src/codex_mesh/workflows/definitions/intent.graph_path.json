@@ -1,0 +1,118 @@
+{
+    "id": "intent.graph_path",
+    "version": 1,
+    "name": "Dependency path",
+    "description": "Find a dependency path between two symbols.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "from": {
+                "type": "string"
+            },
+            "to": {
+                "type": "string"
+            },
+            "max_hops": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 30,
+                "default": 12
+            },
+            "edge_types": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "calls",
+                        "imports",
+                        "contains"
+                    ]
+                },
+                "default": [
+                    "calls",
+                    "imports",
+                    "contains"
+                ]
+            }
+        },
+        "required": [
+            "from",
+            "to"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.from}}",
+                "limit": 10
+            },
+            "save_as": "a"
+        },
+        {
+            "action": "tool",
+            "tool_name": "resolve_symbol",
+            "params": {
+                "query": "{{input.to}}",
+                "limit": 10
+            },
+            "save_as": "b"
+        },
+        {
+            "action": "tool",
+            "tool_name": "find_path",
+            "params": {
+                "from_id": "{{a.best.id}}",
+                "to_id": "{{b.best.id}}",
+                "edge_types": "{{input.edge_types}}",
+                "max_hops": "{{input.max_hops}}"
+            },
+            "save_as": "path"
+        },
+        {
+            "action": "tool",
+            "tool_name": "path_to_subgraph",
+            "params": {
+                "path_result": "{{path}}"
+            },
+            "save_as": "pg"
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{pg.nodes}}",
+                "edges": "{{pg.edges}}"
+            },
+            "save_as": "mermaid"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Dependency path",
+                "",
+                "## From / To",
+                "- {{a.best.qualified_name}}",
+                "- {{b.best.qualified_name}}",
+                "",
+                "## Found",
+                "- {{path.found}}",
+                "",
+                "## Graph (Mermaid)",
+                "```mermaid",
+                "{{mermaid.content}}",
+                "```",
+                "",
+                "## Notes",
+                "- Steps: {{path.path_length}}"
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

@@ -1,0 +1,74 @@
+{
+    "id": "intent.change_plan",
+    "version": 1,
+    "name": "Next phase plan",
+    "description": "Generate a technical roadmap based on current structure, missing flows, and priorities.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "horizon": {
+                "type": "string",
+                "enum": [
+                    "short",
+                    "mid",
+                    "long"
+                ],
+                "default": "short"
+            }
+        }
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "get_repo_map_raw",
+            "params": {
+                "token_budget": 1600
+            },
+            "save_as": "repomap"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_hotspot_raw",
+            "params": {
+                "path": ""
+            },
+            "save_as": "hot"
+        },
+        {
+            "action": "tool",
+            "tool_name": "summarize_hotspots",
+            "params": {
+                "report": "{{hot}}",
+                "limit": 10
+            },
+            "save_as": "hot_sum"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Next phase plan",
+                "",
+                "## Horizon",
+                "- {{input.horizon}}",
+                "",
+                "## Current structure (RepoMap)",
+                "{{repomap.map}}",
+                "",
+                "## Risk drivers (Hotspots)",
+                "{{hot_sum.markdown}}",
+                "",
+                "## Recommended milestones",
+                "- Phase A: Raw JSON tool outputs + graph primitives (subgraph/tree/path) + answer validation fallback",
+                "- Phase B: Intent router + workflow runner + list_intents/execute_intent",
+                "- Phase C: Entry points + impact analysis + dead code report",
+                "- Phase D: Live updates (watchfiles) + MCP notifications + resources",
+                "- Phase E: Optional dynamic tracing for execution graphs"
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

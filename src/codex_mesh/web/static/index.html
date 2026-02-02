@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodexMesh Control Plane</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent-color: #3b82f6;
+            --border-color: #334155;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+        }
+
+        #sidebar {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #main {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background-color: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        input,
+        select,
+        textarea {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        pre {
+            background-color: #000;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-READY {
+            background-color: #10b981;
+            color: #fff;
+        }
+
+        .status-LOADING {
+            background-color: #f59e0b;
+            color: #fff;
+        }
+
+        .status-IDLE {
+            background-color: #64748b;
+            color: #fff;
+        }
+
+        /* Chat styles */
+        #chat-history {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .user-msg {
+            background-color: #374151;
+            align-self: flex-end;
+        }
+
+        .agent-msg {
+            background-color: #1e3a8a;
+            align-self: flex-start;
+        }
+
+        .evidence-box {
+            font-size: 0.8em;
+            color: #94a3b8;
+            border-top: 1px solid #334155;
+            margin-top: 8px;
+            padding-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sidebar">
+        <h2>CodexMesh</h2>
+
+        <div class="card">
+            <h3>Project</h3>
+            <input type="text" id="project-path" placeholder="/path/to/project"
+                value="/Users/user/Documents/workspace/researches/CodexMesh">
+            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                <button onclick="connectProject()">Connect</button>
+                <div id="status-badge" class="status-badge status-IDLE">IDLE</div>
+            </div>
+            <div style="margin-top: 10px;">
+                <progress id="progress-bar" value="0" max="100" style="width: 100%"></progress>
+                <small id="status-msg">Waiting...</small>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Gemini Settings</h3>
+
+            <label>API Key</label>
+            <input id="geminiKey" type="password" placeholder="AIza..." />
+
+            <label style="margin-top: 8px; display: block;">Model</label>
+            <input id="geminiModel" type="text" value="gemini-2.5-flash" />
+
+            <label style="margin-top: 8px; display: block;">Temperature</label>
+            <input id="geminiTemp" type="number" step="0.1" min="0" max="2" value="0.2" />
+
+            <div style="margin-top: 10px; display: flex; gap: 5px;">
+                <button id="btnGeminiSave" style="flex: 1;">Save</button>
+                <button id="btnGeminiTest" style="flex: 1;">Test</button>
+                <button id="btnGeminiClear" style="flex: 1; background-color: #64748b;">Clear</button>
+            </div>
+
+            <div id="geminiStatus" class="muted" style="margin-top: 8px; font-size: 0.8em; color: #94a3b8;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Files</h3>
+            <div id="file-tree" style="max-height: 300px; overflow-y: auto;">
+                (Connect to list files)
+            </div>
+        </div>
+    </div>
+
+    <div id="main">
+        <div class="card">
+            <h3>Reviewer & Chat</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <select id="review-mode">
+                    <option value="quick">Quick</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="deep">Deep</option>
+                </select>
+                <label><input type="checkbox" id="show-evidence" checked> Show verified items</label>
+            </div>
+
+            <div id="chat-history"></div>
+
+            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                <textarea id="chat-input" rows="2" placeholder="Ask about the code..."></textarea>
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Content Viewer</h3>
+            <pre id="content-viewer">Select a file to view...</pre>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        // --- Status SSE ---
+        const evtSource = new EventSource(`${API_BASE}/v1/events`);
+        evtSource.addEventListener("progress", (event) => {
+            const data = JSON.parse(event.data);
+            if (data.status) updateStatus(data.status, data.progress, data.message);
+        });
+
+        // Also listen for generic messages just in case
+        evtSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.status) updateStatus(data.status, data.progress, data.message);
+        };
+
+        function updateStatus(status, progress, msg) {
+            const badge = document.getElementById('status-badge');
+            badge.className = `status-badge status-${status}`;
+            badge.textContent = status;
+
+            document.getElementById('progress-bar').value = progress;
+            document.getElementById('status-msg').textContent = msg;
+
+            if (status === 'READY') refreshFileList();
+        }
+
+        async function connectProject() {
+            const path = document.getElementById('project-path').value;
+            await fetch(`${API_BASE}/v1/project/connect`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_path: path, options: { auto_index: true, force_reindex: false, watch: true } })
+            });
+        }
+
+        async function refreshFileList() {
+            const res = await fetch(`${API_BASE}/v1/fs/list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: "." })
+            });
+
+            if (!res.ok) {
+                const txt = await res.text();
+                document.getElementById('file-tree').innerHTML =
+                    `<pre>Failed to list files (${res.status})\n${txt}</pre>`;
+                return;
+            }
+
+            const data = await res.json();
+            const entries = Array.isArray(data.entries) ? data.entries : [];
+            const lines = entries
+                .map(e => {
+                    const suffix = (e.type === 'dir') ? '/' : '';
+                    return `${e.path}${suffix}`;
+                })
+                .join('\n');
+            document.getElementById('file-tree').innerHTML = `<pre>${lines || '(empty)'}</pre>`;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value;
+            if (!msg) return;
+
+            const history = document.getElementById('chat-history');
+            history.innerHTML += `<div class="message user-msg">${msg}</div>`;
+            input.value = '';
+
+            const mode = document.getElementById('review-mode').value;
+            const res = await fetch(`${API_BASE}/reviewer/ask`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, mode })
+            });
+            const data = await res.json();
+
+            let evidenceHtml = '';
+            if (document.getElementById('show-evidence').checked && data.checked_items) {
+                evidenceHtml = `<div class="evidence-box">Checked: ${data.checked_items.join(', ')}</div>`;
+            }
+
+            // Render markdown (basic text for now)
+            history.innerHTML += `<div class="message agent-msg">${data.answer}${evidenceHtml}</div>`;
+            history.scrollTop = history.scrollHeight;
+        }
+
+        // --- Gemini Settings ---
+        async function geminiRefreshFromServer() {
+            const el = document.getElementById("geminiStatus");
+            try {
+                const r = await fetch("/api/llm/gemini");
+                const j = await r.json();
+                el.textContent = j.has_key
+                    ? `Configured: ****${j.key_last4} | ${j.model}`
+                    : "Not configured";
+            } catch (e) {
+                el.textContent = "Failed to read server settings";
+            }
+        }
+
+        function geminiLoadLocal() {
+            const k = localStorage.getItem("gemini_api_key") || "";
+            const m = localStorage.getItem("gemini_model") || "gemini-pro";
+            const t = localStorage.getItem("gemini_temp") || "0.2";
+            document.getElementById("geminiKey").value = k;
+            document.getElementById("geminiModel").value = m;
+            document.getElementById("geminiTemp").value = t;
+        }
+
+        async function geminiSave() {
+            const key = document.getElementById("geminiKey").value || "";
+            const model = document.getElementById("geminiModel").value || "gemini-pro";
+            const temperature = parseFloat(document.getElementById("geminiTemp").value || "0.2");
+
+            // store in browser
+            localStorage.setItem("gemini_api_key", key);
+            localStorage.setItem("gemini_model", model);
+            localStorage.setItem("gemini_temp", String(temperature));
+
+            // apply to server memory
+            await fetch("/api/llm/gemini", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ api_key: key, model, temperature }),
+            });
+
+            await geminiRefreshFromServer();
+        }
+
+        async function geminiClear() {
+            localStorage.removeItem("gemini_api_key");
+            localStorage.removeItem("gemini_model");
+            localStorage.removeItem("gemini_temp");
+            document.getElementById("geminiKey").value = "";
+            document.getElementById("geminiModel").value = "gemini-pro";
+            document.getElementById("geminiTemp").value = "0.2";
+
+            await fetch("/api/llm/gemini", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ api_key: "" }),
+            });
+
+            await geminiRefreshFromServer();
+        }
+
+        async function geminiTest() {
+            const el = document.getElementById("geminiStatus");
+            el.textContent = "Testing...";
+            const r = await fetch("/api/llm/gemini/test", { method: "POST" });
+            const j = await r.json();
+            el.textContent = j.ok
+                ? `OK (${j.model}) ${j.latency_ms}ms | sample="${j.sample}"`
+                : `Test failed: ${j.error}`;
+        }
+
+        document.getElementById("btnGeminiSave").addEventListener("click", geminiSave);
+        document.getElementById("btnGeminiClear").addEventListener("click", geminiClear);
+        document.getElementById("btnGeminiTest").addEventListener("click", geminiTest);
+
+        // Init
+        geminiLoadLocal();
+        geminiRefreshFromServer();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+# CodexMesh MCP Dockerfile
+# Lightweight image for stdio MCP server
+
+# ==============================================================================
+# Stage 1: Builder (uv + venv)
+# ==============================================================================
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml ./
+COPY README.md ./
+COPY src ./src/
+
+# Install dependencies into /app/.venv
+# NOTE: If you commit uv.lock, you can switch to: uv sync --frozen ...
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --extra llm-core --extra llm-google
+
+# ==============================================================================
+# Stage 2: Runtime image
+# ==============================================================================
+FROM python:3.11-slim-bookworm AS runtime
+
+WORKDIR /app
+
+# Install runtime dependencies (git needed for churn / ignore checks)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash codexmesh
+
+# Copy venv + sources
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/src /app/src
+
+# Copy entrypoint
+COPY docker/entrypoint-mcp.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Pre-create cache + data dirs so empty named volumes inherit correct perms on first run
+RUN mkdir -p /data /home/codexmesh/.cache/fastembed \
+    && chown -R codexmesh:codexmesh /data /app /home/codexmesh/.cache
+
+# Switch to non-root user
+USER codexmesh
+
+# Environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV CODEX_MESH_STORAGE_PATH=/data
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
+ENV FASTEMBED_CACHE_PATH=/home/codexmesh/.cache/fastembed
+
+ENTRYPOINT ["/entrypoint.sh"]

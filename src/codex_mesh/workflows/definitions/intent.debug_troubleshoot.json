@@ -1,0 +1,92 @@
+{
+    "id": "intent.debug_troubleshoot",
+    "version": 1,
+    "name": "Debug & troubleshoot",
+    "description": "Given an error/traceback/symptom, locate likely root cause and the code areas to inspect.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "symptom": {
+                "type": "string"
+            },
+            "k": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 25,
+                "default": 8
+            }
+        },
+        "required": [
+            "symptom"
+        ]
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "semantic_search_raw",
+            "params": {
+                "query": "{{input.symptom}}",
+                "k": "{{input.k}}"
+            },
+            "save_as": "sem"
+        },
+        {
+            "action": "tool",
+            "tool_name": "search_code_raw",
+            "params": {
+                "query": "{{input.symptom}}",
+                "limit": 20
+            },
+            "save_as": "lex"
+        },
+        {
+            "action": "tool",
+            "tool_name": "resolve_seeds",
+            "params": {
+                "semantic_matches": "{{sem.matches}}",
+                "lex_matches": "{{lex.matches}}",
+                "max_seeds": 5
+            },
+            "save_as": "seeds"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_subgraph",
+            "params": {
+                "roots": "{{seeds.ids}}",
+                "direction": "both",
+                "depth": 2,
+                "edge_types": [
+                    "calls",
+                    "imports",
+                    "contains"
+                ],
+                "max_nodes": 600
+            },
+            "save_as": "g"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Troubleshooting report",
+                "",
+                "## Symptom",
+                "{{input.symptom}}",
+                "",
+                "## Most relevant code areas",
+                "Found {{seeds.count}} relevant symbols.",
+                "Top matches:",
+                "{{seeds.ids}}",
+                "",
+                "## Next checks",
+                "- Inspect the top matches and their direct callers/callees.",
+                "- If this is runtime-only behavior, consider enabling dynamic tracing."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

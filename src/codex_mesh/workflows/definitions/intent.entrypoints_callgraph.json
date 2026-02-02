@@ -1,0 +1,73 @@
+{
+    "id": "intent.entrypoints_callgraph",
+    "version": 1,
+    "name": "Entrypoints Call Graph",
+    "description": "Explores the call graph starting from the project's entrypoints.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "default": 3
+            },
+            "depth": {
+                "type": "integer",
+                "default": 2
+            }
+        }
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "detect_entrypoints",
+            "params": {
+                "limit": "{{input.limit|int}}"
+            },
+            "save_as": "entries"
+        },
+        {
+            "action": "tool",
+            "tool_name": "build_call_graph",
+            "params": {
+                "roots": "{{entries.entrypoints|map(attribute='id')}}",
+                "depth": "{{input.depth|int}}",
+                "direction": "out"
+            },
+            "save_as": "cg"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Entrypoints Call Graph",
+                "",
+                "## Summary",
+                "Analyzed top {{input.limit}} entrypoints to map the high-level execution flow.",
+                "",
+                "## Execution Map",
+                "```mermaid",
+                "{{cg.mermaid}}",
+                "```",
+                "",
+                "## Entrypoints Details",
+                "{% for e in entries.entrypoints %}",
+                "- **{{e.name}}** ({{e.file_path}})",
+                "  - Category: {{e.category}}",
+                "  - Score: {{e.score}}",
+                "  - Reasons: {{e.reasons|join(', ')}}",
+                "{% endfor %}",
+                "",
+                "## Evidence",
+                "Call graph contains {{cg.stats.node_count}} nodes and {{cg.stats.edge_count}} edges.",
+                "",
+                "## Next Steps",
+                "- Use `intent.feature_slice` to drill down into specific areas.",
+                "- Use `intent.change_impact` to see how changes to these entrypoints affect the system."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

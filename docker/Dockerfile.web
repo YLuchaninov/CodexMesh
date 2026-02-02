@@ -1,0 +1,79 @@
+# CodexMesh Web Dockerfile
+# Multi-stage build for HTTP/UI service
+
+# ==============================================================================
+# Stage 1: Build frontend
+# ==============================================================================
+FROM node:20-alpine AS frontend
+
+WORKDIR /frontend
+
+# Copy frontend source
+COPY src/codex_mesh/web/frontend/package*.json ./
+RUN npm ci --silent
+
+COPY src/codex_mesh/web/frontend/ ./
+RUN npm run build
+
+# ==============================================================================
+# Stage 2: Builder (uv + venv)
+# ==============================================================================
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml ./
+COPY README.md ./
+COPY src ./src/
+
+# Install dependencies into /app/.venv
+# NOTE: If you commit uv.lock, you can switch to: uv sync --frozen ...
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --extra web --extra llm-core --extra llm-google
+
+# ==============================================================================
+# Stage 3: Runtime image
+# ==============================================================================
+FROM python:3.11-slim-bookworm AS runtime
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash codexmesh
+
+# Copy venv + sources
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/src /app/src
+
+# Copy built frontend
+# Note: vite.config.ts specifies outDir: '../static/dist'
+COPY --from=frontend /static/dist /app/src/codex_mesh/web/static/dist
+
+# Copy entrypoint
+COPY docker/entrypoint-web.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Pre-create cache + data dirs so empty named volumes inherit correct perms on first run
+RUN mkdir -p /data /home/codexmesh/.cache/fastembed \
+    && chown -R codexmesh:codexmesh /data /app /home/codexmesh/.cache
+
+# Switch to non-root user
+USER codexmesh
+
+# Environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV CODEX_MESH_STORAGE_PATH=/data
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
+ENV FASTEMBED_CACHE_PATH=/home/codexmesh/.cache/fastembed
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

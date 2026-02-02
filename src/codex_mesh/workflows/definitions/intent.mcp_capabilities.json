@@ -1,0 +1,48 @@
+{
+    "id": "intent.mcp_capabilities",
+    "version": 1,
+    "name": "MCP capabilities",
+    "description": "List available tools and intents, and map common questions to best intents/tools.",
+    "input_schema": {
+        "type": "object",
+        "properties": {}
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "list_tools",
+            "params": {},
+            "save_as": "tools"
+        },
+        {
+            "action": "tool",
+            "tool_name": "list_intents",
+            "params": {},
+            "save_as": "intents"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# MCP capabilities",
+                "",
+                "## Tools",
+                "{{tools.markdown}}",
+                "",
+                "## Intents",
+                "{{intents.markdown}}",
+                "",
+                "## Which intent for which question",
+                "- \"All functions related to feature X\" → intent.feature_slice",
+                "- \"If I change Y, what breaks?\" → intent.change_impact",
+                "- \"Show what gets called when feature runs\" → intent.execution_graph_static",
+                "- \"Find dead code\" → intent.dead_code",
+                "- \"How to refactor X\" → intent.refactor_guidance"
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

@@ -1,0 +1,98 @@
+{
+    "id": "intent.codebase_overview",
+    "version": 2,
+    "name": "Codebase overview",
+    "description": "High-signal overview of repository structure, entrypoints, and risk hotspots.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "token_budget": {
+                "type": "integer",
+                "default": 1600
+            },
+            "hotspot_limit": {
+                "type": "integer",
+                "default": 10
+            },
+            "max_nodes": {
+                "type": "integer",
+                "default": 100
+            }
+        }
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "get_repo_map_raw",
+            "params": {
+                "token_budget": "{{input.token_budget|int}}",
+                "include_entrypoints": true,
+                "include_hotspots": true,
+                "include_clusters": true
+            },
+            "save_as": "repomap"
+        },
+        {
+            "action": "tool",
+            "tool_name": "detect_entrypoints",
+            "params": {
+                "limit": 20
+            },
+            "save_as": "entries"
+        },
+        {
+            "action": "tool",
+            "tool_name": "get_hotspot_raw",
+            "params": {
+                "path": ""
+            },
+            "save_as": "hotspot"
+        },
+        {
+            "action": "tool",
+            "tool_name": "summarize_hotspots",
+            "params": {
+                "report": "{{hotspot}}",
+                "limit": "{{input.hotspot_limit|int}}"
+            },
+            "save_as": "hot_summary"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Codebase Overview",
+                "",
+                "## Summary",
+                "This project is a {{repomap.token_count|int}}-token scope. It contains {{entries.count}} entrypoints and several risk hotspots.",
+                "",
+                "## Execution Map",
+                "```mermaid",
+                "{{repomap.map}}",
+                "```",
+                "",
+                "## Entrypoints",
+                "Found {{entries.count}} entrypoints.",
+                "{% for e in entries.entrypoints %}",
+                "- `{{e.name}}` ({{e.file_path}}): {{e.category}}",
+                "{% endfor %}",
+                "",
+                "## Top Hotspots",
+                "{{hot_summary.markdown}}",
+                "",
+                "## Evidence",
+                "- Repo map analyzed with budget {{input.token_budget}}.",
+                "- {{hotspot.report|length}} hotspots calculated.",
+                "",
+                "## Next Steps",
+                "- Use `intent.feature_slice` to map a feature to concrete functions/classes.",
+                "- Use `intent.change_impact` before refactoring a central function.",
+                "- Use `intent.entrypoints_callgraph` for a deep dive into execution flow."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

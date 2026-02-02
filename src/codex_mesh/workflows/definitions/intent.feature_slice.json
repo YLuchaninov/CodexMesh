@@ -1,0 +1,121 @@
+{
+    "id": "intent.feature_slice",
+    "version": 2,
+    "name": "Feature slice (related functions)",
+    "description": "Find functions/classes/files related to a described feature using semantic + graph expansion.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string"
+            },
+            "depth": {
+                "type": "integer",
+                "default": 3
+            },
+            "max_nodes": {
+                "type": "integer",
+                "default": 500
+            }
+        },
+        "required": [
+            "query"
+        ]
+    },
+    "examples": [
+        "Give me all functions related to authentication",
+        "Show me the feature slice for PDF export",
+        "What code handles user registration?"
+    ],
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "semantic_search_raw",
+            "params": {
+                "query": "{{input.query}}",
+                "k": 12
+            },
+            "save_as": "semantic_hits"
+        },
+        {
+            "action": "tool",
+            "tool_name": "search_code_raw",
+            "params": {
+                "query": "{{input.query}}",
+                "limit": 20
+            },
+            "save_as": "lex_hits"
+        },
+        {
+            "action": "tool",
+            "tool_name": "resolve_seeds",
+            "params": {
+                "semantic_hits": "{{semantic_hits.matches}}",
+                "lex_hits": "{{lex_hits.matches}}",
+                "max_seeds": 8
+            },
+            "save_as": "seeds"
+        },
+        {
+            "action": "branch",
+            "condition": "{{seeds.root_ids}}",
+            "steps": [
+                {
+                    "action": "tool",
+                    "tool_name": "get_subgraph",
+                    "params": {
+                        "roots": "{{seeds.root_ids}}",
+                        "direction": "both",
+                        "depth": "{{input.depth|int}}",
+                        "edge_types": [
+                            "calls",
+                            "imports",
+                            "contains"
+                        ],
+                        "max_nodes": "{{input.max_nodes|int}}"
+                    },
+                    "save_as": "slice_graph"
+                }
+            ],
+            "else": [
+                {
+                    "action": "return",
+                    "value": "Could not find any relevant code for '{{input.query}}'. Try a different term."
+                }
+            ]
+        },
+        {
+            "action": "tool",
+            "tool_name": "render_graph",
+            "params": {
+                "format": "mermaid",
+                "nodes": "{{slice_graph.nodes}}",
+                "edges": "{{slice_graph.edges}}"
+            },
+            "save_as": "graph_mermaid"
+        },
+        {
+            "action": "compose",
+            "template": [
+                "# Feature slice: {{input.query}}",
+                "",
+                "## Top related functions/classes",
+                "Found {{slice_graph.nodes|length}} nodes in slice.",
+                "",
+                "## Graph (Mermaid)",
+                "```mermaid",
+                "{{graph_mermaid.content}}",
+                "```",
+                "",
+                "## Notes",
+                "- Slice is built from semantic + lexical seeds, expanded via calls/imports/contains.",
+                "- If the slice is too large, reduce depth or max_nodes; if too small, increase depth."
+            ],
+            "save_as": "answer_md"
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

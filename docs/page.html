@@ -1,0 +1,1504 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description"
+        content="CodexMesh — an MCP codebase intelligence engine: call graphs, entrypoints, dependency paths, evidence-first navigation, resilient indexing, hotspots, doc-aware retrieval, and agent-ready JSON flows. LLM stays in your agent; facts stay local." />
+    <meta name="theme-color" content="#0b1220" />
+    <title>CodexMesh — Codebase Intelligence Engine (MCP)</title>
+
+    <!-- Google Fonts: Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Inline SVG favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%236366f1'/%3E%3Cstop%20offset='1'%20stop-color='%2310b981'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d='M32%204%20L58%2019%20L58%2045%20L32%2060%20L6%2045%20L6%2019%20Z'%20fill='none'%20stroke='url(%23g)'%20stroke-width='3'%20stroke-linejoin='round'/%3E%3Cpath%20d='M32%2032%20L32%2014%20M32%2032%20L16%2041%20M32%2032%20L48%2041'%20stroke='url(%23g)'%20stroke-width='3'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='14'%20r='3'%20fill='%23090e1a'%20stroke='%23f0f4ff'%20stroke-width='1.5'/%3E%3Ccircle%20cx='16'%20cy='41'%20r='3'%20fill='%23090e1a'%20stroke='%23f0f4ff'%20stroke-width='1.5'/%3E%3Ccircle%20cx='48'%20cy='41'%20r='3'%20fill='%23090e1a'%20stroke='%23f0f4ff'%20stroke-width='1.5'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='5'%20fill='url(%23g)'/%3E%3C/svg%3E" />
+
+    <style>
+        :root {
+            /* Palette - Premium Dark */
+            --bg: #090e1a;
+            --bg2: #0d1526;
+            --surface: #151f32;
+            --surface-hover: #1c2840;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+
+            --text: #f0f4ff;
+            --text-sec: #94a3b8;
+            --text-ter: #64748b;
+
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent2: #10b981;
+            --accent2-glow: rgba(16, 185, 129, 0.15);
+
+            --warn: #fbbf24;
+            --danger: #f43f5e;
+
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 24px;
+
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+            --scrollbar: rgba(255, 255, 255, .15);
+            --scrollbar-bg: rgba(0, 0, 0, 0.2);
+
+            --hscroll-pad: 24px;
+            --fade-w: 60px;
+
+            /* Motion System */
+            --motion: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg: #ffffff;
+            --bg2: #f8fafc;
+            --surface: #ffffff;
+            --surface-hover: #f1f5f9;
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+
+            --text: #0f172a;
+            --text-sec: #334155;
+            --text-ter: #5e6d8a;
+
+            --accent: #4f46e5;
+            --accent-glow: rgba(79, 70, 229, 0.1);
+            --accent2: #059669;
+            --accent2-glow: rgba(5, 150, 105, 0.1);
+
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            --shadow-glow: 0 0 20px rgba(79, 70, 229, 0.05);
+
+            --scrollbar: #cbd5e1;
+            --scrollbar-bg: #f1f5f9;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-sans);
+            background: var(--bg);
+            /* Advanced Layered Background */
+            background-image:
+                radial-gradient(circle at 10% 0%, var(--accent-glow), transparent 35%),
+                radial-gradient(circle at 90% 10%, var(--accent2-glow), transparent 35%),
+                radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03), transparent 50%);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            transition: var(--motion);
+        }
+
+        .wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(9, 14, 26, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            transition: var(--motion);
+        }
+
+        [data-theme="light"] header {
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        header:hover {
+            border-bottom-color: var(--border-hover);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 72px;
+            gap: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .logoSvg {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .brand:hover .logoSvg {
+            transform: rotate(15deg) scale(1.1);
+        }
+
+        .navlinks {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .navlinks a {
+            padding: 8px 16px;
+            border-radius: 99px;
+            color: var(--text-sec);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .navlinks a:hover {
+            color: var(--text);
+            background: var(--surface-hover);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 900px) {
+            .navlinks {
+                display: none;
+            }
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--motion);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(255, 255, 255, 0.05), transparent);
+            pointer-events: none;
+        }
+
+        .btn:hover {
+            background: var(--surface-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn.primary:hover {
+            opacity: 1;
+            background: #4f46e5;
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            color: var(--text-sec);
+            font-weight: 600;
+            font-size: 12px;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent2);
+            box-shadow: 0 0 10px var(--accent2-glow);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            display: grid;
+            grid-template-columns: 1fr 0.9fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        @media (max-width: 980px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding: 60px 0;
+                gap: 40px;
+            }
+        }
+
+        h1 {
+            font-size: 64px;
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--text) 20%, var(--text-ter) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 24px 0;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 48px;
+            }
+        }
+
+        .lead {
+            color: var(--text-sec);
+            font-size: 21px;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            max-width: 650px;
+            font-weight: 400;
+        }
+
+        .cta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .kbd {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-ter);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        section {
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        h2 {
+            font-size: 38px;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin: 0 0 20px;
+            font-weight: 800;
+        }
+
+        .sub {
+            color: var(--text-sec);
+            font-size: 19px;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 0 50px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--motion);
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+        }
+
+        .card .hd {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        [data-theme="light"] .card .hd {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .card .bd {
+            padding: 32px;
+        }
+
+        /* Grid */
+        .grid3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .grid3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feat {
+            padding: 32px;
+            border-radius: var(--radius);
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            transition: var(--motion);
+            position: relative;
+        }
+
+        .feat:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: var(--text-ter);
+            box-shadow: var(--shadow-lg);
+            background: var(--surface);
+        }
+
+        .feat h3 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .feat p {
+            margin: 0 0 20px;
+            color: var(--text-sec);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .tagrow {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-ter);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        [data-theme="light"] .tag {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Horizontal Scroll */
+        .hscrollWrap {
+            position: relative;
+            margin: 0 -24px;
+        }
+
+        .hscroll {
+            display: flex;
+            gap: 24px;
+            overflow-x: auto;
+            padding: 10px 24px 30px;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar) transparent;
+        }
+
+        .hscroll>div {
+            flex: 0 0 340px;
+            scroll-snap-align: start;
+        }
+
+        .hscroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .hscroll::-webkit-scrollbar-track {
+            background: var(--scrollbar-bg);
+            border-radius: 10px;
+        }
+
+        .hscroll::-webkit-scrollbar-thumb {
+            background: var(--scrollbar);
+            border-radius: 10px;
+        }
+
+        .fadeLeft,
+        .fadeRight {
+            position: absolute;
+            top: 0;
+            bottom: 30px;
+            width: var(--fade-w);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .fadeLeft {
+            left: 0;
+            background: linear-gradient(90deg, var(--bg) 0%, transparent 100%);
+        }
+
+        .fadeRight {
+            right: 0;
+            background: linear-gradient(270deg, var(--bg) 0%, transparent 100%);
+        }
+
+        /* Tables */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            box-shadow: var(--shadow);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-sec);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+        }
+
+        td {
+            font-size: 16px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .yes {
+            color: var(--accent2);
+            font-weight: 700;
+        }
+
+        .mid {
+            color: var(--warn);
+            font-weight: 700;
+        }
+
+        pre {
+            background: #0d121b;
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            color: #d1d5db;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        [data-theme="light"] pre {
+            background: #f8fafc;
+            color: #1e293b;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 40px;
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+            color: var(--text-ter);
+        }
+
+        .footgrid {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 60px;
+        }
+
+        .links {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .links a {
+            padding: 8px 18px;
+            border-radius: 999px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-sec);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .links a:hover {
+            background: var(--surface-hover);
+            border-color: var(--text-ter);
+            color: var(--text);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Utilities */
+        .miniCard {
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg);
+        }
+
+        .miniCard b {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .miniCard span {
+            font-size: 14px;
+            color: var(--text-sec);
+            line-height: 1.4;
+        }
+
+        .note {
+            font-size: 14px;
+            color: var(--text-ter);
+            margin-top: 16px;
+            font-style: italic;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="wrap">
+            <div class="nav">
+                <div class="brand">
+                    <svg class="logoSvg" viewBox="0 0 64 64" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="gLogo" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0" stop-color="var(--accent)" />
+                                <stop offset="1" stop-color="var(--accent2)" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Hexagon -->
+                        <path d="M32 4 L58 19 L58 45 L32 60 L6 45 L6 19 Z" fill="rgba(99, 102, 241, 0.1)"
+                            stroke="url(#gLogo)" stroke-width="3" stroke-linejoin="round" />
+                        <!-- Internal Graph -->
+                        <path d="M32 32 L32 14 M32 32 L16 41 M32 32 L48 41" stroke="url(#gLogo)" stroke-width="3"
+                            stroke-linecap="round" />
+                        <circle cx="32" cy="14" r="3" fill="var(--bg)" stroke="var(--text)" stroke-width="1.5" />
+                        <circle cx="16" cy="41" r="3" fill="var(--bg)" stroke="var(--text)" stroke-width="1.5" />
+                        <circle cx="48" cy="41" r="3" fill="var(--bg)" stroke="var(--text)" stroke-width="1.5" />
+                        <circle cx="32" cy="32" r="5" fill="url(#gLogo)" />
+                    </svg>
+
+                    <div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span>CodexMesh</span>
+                            <span class="pill"><span class="dot"></span> MCP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navlinks">
+                    <a href="#why">Why</a>
+                    <a href="#features">Features</a>
+                    <a href="#docs">Docs</a>
+                    <a href="#hotspots">Hotspots</a>
+                    <a href="#jsonflows">Flows</a>
+                    <a href="#security">Security</a>
+                    <button class="btn" id="themeBtn" title="Toggle theme">Theme</button>
+                    <a class="btn primary" href="#getstarted">Connect MCP</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <!-- HERO -->
+        <div class="hero">
+            <div>
+                <div class="pill" style="width:max-content;">
+                    <span class="dot"></span>
+                    LLM stays in your agent · CodexMesh stays local and returns facts
+                </div>
+
+                <h1>CodexMesh — a codebase intelligence engine for agent systems via MCP</h1>
+                <p class="lead">
+                    CodexMesh turns any repository into a structured graph of <b>entrypoints</b>, <b>call graphs</b>,
+                    <b>imports</b>,
+                    <b>symbol containment</b>, <b>hotspots</b>, and (optionally) <b>semantic retrieval</b> —
+                    with <b>line-accurate evidence</b>.
+                    Your agent (Cursor / Claude / Copilot / custom) handles chat and LLM reasoning. CodexMesh supplies
+                    verified data and clickable evidence.
+                </p>
+
+                <div class="cta">
+                    <a class="btn primary" href="#getstarted">Run & connect MCP</a>
+                    <a class="btn" href="#security">Enterprise security</a>
+                    <span class="kbd">file:line-range → click → open → highlight</span>
+                </div>
+
+                <div style="margin-top:18px;color:var(--muted);font-weight:800;font-size:13px;">
+                    Built for real-world repos: monorepos, generated code, mixed languages, messy histories — with
+                    graceful degradation instead of crashing.
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="hd">
+                    <b>What you get</b>
+                    <span class="pill">read-only · safe-by-default</span>
+                </div>
+                <div class="bd">
+                    <div class="hscrollWrap">
+                        <div class="fadeLeft" aria-hidden="true"></div>
+                        <div class="fadeRight" aria-hidden="true"></div>
+                        <div class="hscroll" aria-label="Highlights carousel">
+                            <div class="miniCard">
+                                <b>Codebase Graph</b>
+                                <span>nodes/edges + entrypoints + call chains + dependency paths</span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Evidence-First</b>
+                                <span>every result links to file + exact line range + snippet</span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Resilience</b>
+                                <span>degraded mode, continue-on-error indexing, health checks</span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Documentation-aware (partial)</b>
+                                <span>index, search, and link docs to code where possible</span>
+                            </div>
+                            <div class="miniCard">
+                                <b>JSON Flows</b>
+                                <span>agent-ready workflows for deterministic tool orchestration</span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Token Efficiency</b>
+                                <span>context packs: fewer tokens, fewer round trips, higher accuracy</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:14px;">
+                        <div class="pill" style="margin-bottom:8px;">Core idea</div>
+                        <div class="small">
+                            CodexMesh is not “another chat”. It is a <b>fact engine</b>: it pinpoints where logic lives,
+                            how it connects, and what to inspect next —
+                            then your agent produces the final answer using the LLM you already have.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WHY -->
+        <section id="why">
+            <h2>Why CodexMesh</h2>
+            <p class="sub">
+                Most AI coding assistants fail in the same ways: wrong file, shallow understanding of system flow, and
+                answers without evidence.
+                CodexMesh solves this by building a durable structure of your codebase (graphs + indexes) and exposing
+                it through MCP tools,
+                so agents can retrieve the right context deterministically and link every claim to the exact lines
+                responsible for the behavior.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>Wrong file problem</h3>
+                    <p>LLMs often latch onto similar names. CodexMesh provides entrypoints → call chains → data sinks
+                        with evidence.</p>
+                    <div class="tagrow">
+                        <span class="tag">entrypoints</span><span class="tag">call graph</span><span
+                            class="tag">paths</span>
+                    </div>
+                </div>
+                <div class="feat">
+                    <h3>No proof problem</h3>
+                    <p>Answers without references are hard to trust. CodexMesh returns file + line range + snippet by
+                        default.</p>
+                    <div class="tagrow">
+                        <span class="tag">evidence</span><span class="tag">spans</span><span
+                            class="tag">click-to-open</span>
+                    </div>
+                </div>
+                <div class="feat">
+                    <h3>Real-world repo problem</h3>
+                    <p>Binary files, generated artifacts, huge monorepos, weird encodings — the system must degrade
+                        gracefully, not crash.</p>
+                    <div class="tagrow">
+                        <span class="tag">degraded</span><span class="tag">limits</span><span class="tag">health</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section id="features">
+            <h2>Features that make agents materially better</h2>
+            <p class="sub">
+                CodexMesh focuses on capabilities that improve correctness and navigation — the places where LLM-only
+                assistants are weakest.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>Entrypoints Map</h3>
+                    <p>Finds ranked entrypoints (web/CLI/worker/tests), with “why” and evidence.</p>
+                    <div class="tagrow"><span class="tag">kind</span><span class="tag">confidence</span><span
+                            class="tag">evidence</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Call Graph (in/out/both)</h3>
+                    <p>Build call graphs with depth/limits, plus unresolved links tracking (no silent drops).</p>
+                    <div class="tagrow"><span class="tag">fan-in/out</span><span class="tag">unresolved</span><span
+                            class="tag">collapse</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Dependency Paths</h3>
+                    <p>Exact paths return real edges and metadata — usable for debugging and impact analysis.</p>
+                    <div class="tagrow"><span class="tag">nodes+edges</span><span class="tag">edge meta</span><span
+                            class="tag">reproducible</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Evidence-First Navigation</h3>
+                    <p>Click any mention (chat/tools/retrieval) to open the file browser and highlight the responsible
+                        line range.</p>
+                    <div class="tagrow"><span class="tag">file:line-range</span><span class="tag">read_span</span><span
+                            class="tag">scroll-to</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Hotspots + Explain</h3>
+                    <p>Identifies “pain nodes” (centrality, high fan-in/out, cycles nearby) and explains why they
+                        matter.</p>
+                    <div class="tagrow"><span class="tag">centrality</span><span class="tag">cycles</span><span
+                            class="tag">impact</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Resilient Indexing</h3>
+                    <p>Continue-on-error, schema versioning, safe file reading, and project health reports.</p>
+                    <div class="tagrow"><span class="tag">schema</span><span class="tag">health</span><span
+                            class="tag">partial results</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Tooling footprint (what’s already there)</b>
+                    <span class="pill">dozens of tools</span>
+                </div>
+                <div class="bd">
+                    <p class="sub" style="margin-bottom:12px;">
+                        CodexMesh exposes a growing set of MCP tools. Below are the main families and the most-used
+                        tools in practice.
+                    </p>
+
+                    <div class="hscrollWrap">
+                        <div class="fadeLeft" aria-hidden="true"></div>
+                        <div class="fadeRight" aria-hidden="true"></div>
+                        <div class="hscroll" aria-label="Tool families carousel">
+                            <div class="miniCard">
+                                <b>Project & Index</b>
+                                <span>
+                                    connect_to_project · project_status · index_stats · index_errors · health_check ·
+                                    refresh_index
+                                </span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Filesystem</b>
+                                <span>
+                                    list_directory · read_file · read_span · search_text · open_file_by_ref
+                                </span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Graph</b>
+                                <span>
+                                    get_subgraph · dependency_tree · find_path · build_call_graph · module_import_graph
+                                    ·
+                                    cycles_explain
+                                </span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Symbols & References</b>
+                                <span>
+                                    resolve_symbol · symbol_overview · references · callers · callees · ownership
+                                    (contains/inherits)
+                                </span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Retrieval</b>
+                                <span>
+                                    semantic_search · lexical_search · context_pack · doc_search (partial)
+                                </span>
+                            </div>
+                            <div class="miniCard">
+                                <b>Hotspots</b>
+                                <span>
+                                    hotspots_list · hotspot_explain · hotspot_neighbors · impact_surface
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="note">
+                        Exact names may differ depending on your build. The key is the structure: tools return typed
+                        data + evidence, not a chat response.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DOCS -->
+        <section id="docs">
+            <h2>Documentation support (partial, but useful)</h2>
+            <p class="sub">
+                CodexMesh includes <b>partial documentation awareness</b>: it can index and search docs, link doc hits
+                back to files/spans where possible,
+                and help agents build “context packs” that combine <b>code evidence</b> with <b>docs evidence</b>.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>Doc indexing & search</h3>
+                    <p>Index Markdown and other text docs for retrieval. Doc hits can be returned with file + line
+                        ranges where supported.</p>
+                    <div class="tagrow"><span class="tag">docs index</span><span class="tag">doc_search</span><span
+                            class="tag">spans</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Doc → code bridge</h3>
+                    <p>When doc references files/symbols, CodexMesh can surface them as clickable references to the
+                        exact code spans.</p>
+                    <div class="tagrow"><span class="tag">linkify</span><span class="tag">open-file</span><span
+                            class="tag">evidence</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Docs + code context packs</h3>
+                    <p>Agents can request a compact pack containing the minimum relevant snippets from both docs and
+                        code to fit a strict token budget.</p>
+                    <div class="tagrow"><span class="tag">budget</span><span class="tag">minimize tokens</span><span
+                            class="tag">reduce latency</span></div>
+                </div>
+            </div>
+
+            <div class="note">
+                “Partial” means: doc coverage depends on the doc formats you index and whether line-based spans are
+                available for that file type in your build.
+            </div>
+        </section>
+
+        <!-- HOTSPOTS -->
+        <section id="hotspots">
+            <h2>Hotspots: what they are and how they’re computed</h2>
+            <p class="sub">
+                Hotpoints are <b>structural risk / complexity centers</b> in your code graph: areas that attract
+                changes, propagate failures,
+                and create expensive debugging paths. They help agents and humans prioritize where to look first.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>What is a hotspot?</h3>
+                    <p>A node (file/symbol/module) with outsized influence: high fan-in/out, centrality, or proximity to
+                        cycles and critical paths.</p>
+                    <div class="tagrow"><span class="tag">fan-in/out</span><span class="tag">centrality</span><span
+                            class="tag">cycles</span></div>
+                </div>
+                <div class="feat">
+                    <h3>How it’s scored</h3>
+                    <p>Typical score mixes: degree metrics, call/import weights, cycle proximity, and graph reachability
+                        across key entrypoints.</p>
+                    <div class="tagrow"><span class="tag">weighted edges</span><span
+                            class="tag">reachability</span><span class="tag">ranking</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Why it helps</h3>
+                    <p>Hotspots guide impact analysis: “change X → what breaks”, “where to add tests”, “where refactors
+                        pay off most”.</p>
+                    <div class="tagrow"><span class="tag">impact</span><span class="tag">testing</span><span
+                            class="tag">refactor ROI</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Hotspot explain (agent-friendly)</b>
+                    <span class="pill">why this node matters</span>
+                </div>
+                <div class="bd">
+                    <pre><code># A “get_hotspot” style output should include:
+- score + breakdown (signals)
+- top callers / callees / importers / dependents
+- closest cycles and paths to entrypoints
+- evidence spans for the edges that drive the score</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- JSON FLOWS -->
+        <section id="jsonflows">
+            <h2>JSON Flows: deterministic tool orchestration for agents</h2>
+            <p class="sub">
+                JSON Flows are <b>predefined, machine-readable workflows</b> that describe how to call tools to answer a
+                class of questions.
+                They make agent behavior more reliable, reproducible, and easy to audit.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>Why flows exist</h3>
+                    <p>Agents can follow a proven plan: which tools to call, in what order, with what limits, and what
+                        to store as evidence.</p>
+                    <div class="tagrow"><span class="tag">deterministic</span><span class="tag">reproducible</span><span
+                            class="tag">auditable</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Benefits in practice</h3>
+                    <p>Less wandering and fewer tokens: flows choose the minimal evidence needed, making local LLMs feel
+                        faster and more accurate.</p>
+                    <div class="tagrow"><span class="tag">token efficiency</span><span class="tag">fewer round
+                            trips</span><span class="tag">higher signal</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Enterprise advantage</h3>
+                    <p>Flows make tool usage governable: policies can enforce max depth, max snippets, no sensitive
+                        folders, and logging requirements.</p>
+                    <div class="tagrow"><span class="tag">policy</span><span class="tag">limits</span><span
+                            class="tag">governance</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Example flow shape (illustrative)</b>
+                    <span class="pill">JSON</span>
+                </div>
+                <div class="bd">
+                    <pre><code>{
+  "name": "Trace feature execution",
+  "goal": "From a user-facing entrypoint to the data layer",
+  "steps": [
+    {"tool": "detect_entrypoints", "args": {"kind": "web", "limit": 10}},
+    {"tool": "build_call_graph", "args": {"root": "$.step0.top[0].id", "depth": 3, "max_nodes": 800}},
+    {"tool": "find_path", "args": {"from": "$.step0.top[0].id", "to": "$.step1.sinks[0].id"}},
+    {"tool": "read_span", "args": {"path": "$.step2.edges[0].meta.file", "start": "$.step2.edges[0].meta.line_start", "end": "$.step2.edges[0].meta.line_end"}}
+  ],
+  "outputs": ["evidence_spans", "subgraph", "paths"]
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- WEB VS MCP -->
+        <section id="webvsmcp">
+            <h2>Web UI vs MCP: why they are not the same</h2>
+            <p class="sub">
+                CodexMesh ships with a web control plane for configuration, observability, and convenience. MCP is the
+                integration interface for agent systems.
+                They solve different problems and can be deployed differently.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>MCP = tool protocol</h3>
+                    <p>MCP exposes tools over a standardized interface so external agents can orchestrate analysis. MCP
+                        can run fully without any LLM.</p>
+                    <div class="tagrow"><span class="tag">LLM-agnostic</span><span class="tag">portable</span><span
+                            class="tag">agent-ready</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Web UI = control plane</h3>
+                    <p>Web UI is for human configuration and visibility (projects, indexes, providers, settings). It can
+                        optionally include LLM-driven review features.</p>
+                    <div class="tagrow"><span class="tag">configuration</span><span
+                            class="tag">observability</span><span class="tag">admin UX</span></div>
+                </div>
+                <div class="feat">
+                    <h3>Why Web may need LLM (optional)</h3>
+                    <p>If you enable web “review/chat” features, the web layer may integrate LLM providers. MCP itself
+                        still does not require LLM.</p>
+                    <div class="tagrow"><span class="tag">optional</span><span class="tag">providers</span><span
+                            class="tag">separation</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Deployment model</b>
+                    <span class="pill">clean separation</span>
+                </div>
+                <div class="bd">
+                    <pre><code>MCP server (core):
+- runs locally/on-prem
+- builds graphs/indexes
+- returns structured tool outputs + evidence
+- does NOT require LLM
+
+Web UI (control plane):
+- config + health + inspection
+- optional LLM-assisted review features (if enabled)
+- not required for external agents to use MCP</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECURITY -->
+        <section id="security">
+            <h2>Security & Privacy (Enterprise-friendly by design)</h2>
+            <p class="sub">
+                CodexMesh is designed to keep source code under your control. It runs locally/on-prem as an MCP tool
+                server and exposes read-only analysis tools.
+                Your agent decides if an LLM is used and which provider is allowed — including fully local models.
+            </p>
+
+            <div class="hscrollWrap">
+                <div class="fadeLeft" aria-hidden="true"></div>
+                <div class="fadeRight" aria-hidden="true"></div>
+                <div class="hscroll" aria-label="Security cards carousel">
+                    <div class="feat">
+                        <h3>No code exfiltration by default</h3>
+                        <p>CodexMesh operates on local files and returns structured results + snippets. It does not
+                            require uploading repositories anywhere.</p>
+                        <div class="tagrow"><span class="tag">local execution</span><span
+                                class="tag">read-only</span><span class="tag">data minimization</span></div>
+                    </div>
+
+                    <div class="feat">
+                        <h3>Local / on-prem LLM compatible</h3>
+                        <p>Use local models in your agent to keep all prompts and code on your network. CodexMesh still
+                            provides the same evidence and graphs.</p>
+                        <div class="tagrow"><span class="tag">air-gapped</span><span class="tag">on-prem</span><span
+                                class="tag">policy-driven</span></div>
+                    </div>
+
+                    <div class="feat">
+                        <h3>Least-privilege access</h3>
+                        <p>Tools can be scoped to a project root, enforce safe path validation, and can be deployed as
+                            separate services per repo/team.</p>
+                        <div class="tagrow"><span class="tag">project isolation</span><span class="tag">safe
+                                paths</span><span class="tag">multi-project</span></div>
+                    </div>
+
+                    <div class="feat">
+                        <h3>Safe operational defaults</h3>
+                        <p>Large/binary/generated files can be excluded; indexing uses limits and degraded mode to avoid
+                            unexpected behavior in prod environments.</p>
+                        <div class="tagrow"><span class="tag">limits</span><span class="tag">ignore rules</span><span
+                                class="tag">degraded mode</span></div>
+                    </div>
+
+                    <div class="feat">
+                        <h3>Auditable tool usage</h3>
+                        <p>Structured tool outputs make it straightforward to log calls/results at the control plane
+                            level (what was accessed and why).</p>
+                        <div class="tagrow"><span class="tag">structured outputs</span><span
+                                class="tag">traceable</span><span class="tag">enterprise ops</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Enterprise checklist (what security teams usually care about)</b>
+                    <span class="pill">practical</span>
+                </div>
+                <div class="bd">
+                    <ul style="margin:0;padding-left:18px;color:var(--muted);">
+                        <li><b style="color:var(--text);">Data residency:</b> run MCP on developer machines or inside
+                            your VPC/on-prem infrastructure.</li>
+                        <li><b style="color:var(--text);">LLM policy control:</b> choose cloud providers or local LLMs;
+                            external calls are under your agent’s control.</li>
+                        <li><b style="color:var(--text);">Minimize what leaves the machine:</b> send only the necessary
+                            snippets/line ranges (context packs), not entire files.</li>
+                        <li><b style="color:var(--text);">Read-only posture:</b> analysis tools can stay non-mutating to
+                            reduce risk and simplify approvals.</li>
+                        <li><b style="color:var(--text);">Operational predictability:</b> limits, ignore rules, and
+                            degraded mode prevent “surprise” resource spikes.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- PERFORMANCE -->
+        <section id="performance">
+            <h2>Performance: bridging LLM speed gaps with deterministic context</h2>
+            <p class="sub">
+                Local LLMs may be slower than cloud models. CodexMesh compensates by reducing the amount of text the LLM
+                must process and minimizing back-and-forth:
+                it delivers the <b>right</b> code fragments and <b>the right</b> relationships, quickly, in a structured
+                way.
+            </p>
+
+            <div class="grid3">
+                <div class="feat">
+                    <h3>Smaller prompts, higher signal</h3>
+                    <p>Instead of dumping whole files, agents request evidence spans and targeted context packs — fewer
+                        tokens, less latency.</p>
+                    <div class="tagrow"><span class="tag">spans</span><span class="tag">context packs</span><span
+                            class="tag">token efficiency</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Graph expansion replaces brute-force reading</h3>
+                    <p>Call graphs and dependency paths recover system flow without the LLM reading the entire codebase.
+                    </p>
+                    <div class="tagrow"><span class="tag">call graph</span><span class="tag">paths</span><span
+                            class="tag">reachability</span></div>
+                </div>
+
+                <div class="feat">
+                    <h3>Caching & incremental indexing</h3>
+                    <p>Precomputed graphs, incremental updates, and bounded subgraphs keep tool calls fast and
+                        predictable on large repos.</p>
+                    <div class="tagrow"><span class="tag">precompute</span><span class="tag">incremental</span><span
+                            class="tag">bounded</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div class="hd">
+                    <b>Typical “speed win” pattern</b>
+                    <span class="pill">less LLM work</span>
+                </div>
+                <div class="bd">
+                    <pre><code># Instead of: “LLM, read the repo and guess”
+# Do: deterministic retrieval + graph traversal, then LLM summarizes.
+
+1) detect_entrypoints(kind="web")
+2) build_call_graph(roots=[entrypoint], depth=3, max_nodes=800)
+3) find_call_path(from=route_handler, to=data_layer)
+4) read_span(file, line_start, line_end, context=30)
+5) LLM summarizes only the relevant evidence</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPARISON -->
+        <section id="compare">
+            <h2>Comparison (architectural focus)</h2>
+            <p class="sub">
+                CodexMesh is designed as a portable “fact engine” for any agent system that can call MCP tools. It does
+                not try to replace your IDE agent.
+            </p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Criterion</th>
+                            <th>Typical AI assistant</th>
+                            <th>CodexMesh</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>Where chat/LLM lives</b></td>
+                            <td>Inside the assistant product</td>
+                            <td class="yes">Outside (your agent). MCP provides facts</td>
+                        </tr>
+                        <tr>
+                            <td><b>Default outputs</b></td>
+                            <td>Text answers, sometimes links</td>
+                            <td class="yes">Structured data + evidence (file + line ranges)</td>
+                        </tr>
+                        <tr>
+                            <td><b>Navigation to the exact code</b></td>
+                            <td>Search + context heuristics</td>
+                            <td class="yes">Click-to-open + highlight spans</td>
+                        </tr>
+                        <tr>
+                            <td><b>System flow understanding</b></td>
+                            <td>Often inferred from limited context</td>
+                            <td class="yes">Entrypoints + call graphs + dependency paths</td>
+                        </tr>
+                        <tr>
+                            <td><b>Enterprise posture</b></td>
+                            <td>Varies by vendor</td>
+                            <td class="mid">Local MCP + local LLM option + data minimization</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="note">
+                CodexMesh wins when correctness, traceability, and secure deployment matter: it provides deterministic
+                structure and evidence,
+                while your agent chooses the LLM and the policy for what is allowed to leave the environment.
+            </div>
+        </section>
+
+        <!-- GET STARTED -->
+        <section id="getstarted">
+            <h2>Get started (GitHub Pages + MCP)</h2>
+            <p class="sub">
+                Save this file as <span class="kbd">docs/index.html</span> and enable GitHub Pages (Settings → Pages →
+                Source: <span class="kbd">/docs</span>).
+                Then run MCP locally and connect it from your agent.
+            </p>
+
+            <!-- New: horizontal scroller for Get Started (requested) -->
+            <div class="card" style="margin-top:12px;">
+                <div class="hd">
+                    <b>Quick start cards</b>
+                    <span class="pill">scroll horizontally</span>
+                </div>
+                <div class="bd">
+                    <div class="hscrollWrap">
+                        <div class="fadeLeft" aria-hidden="true"></div>
+                        <div class="fadeRight" aria-hidden="true"></div>
+                        <div class="hscroll" aria-label="Get started carousel">
+                            <div class="feat">
+                                <h3>1) Run MCP (tool server)</h3>
+                                <p>Start MCP in “LLM-free” mode. It will expose analysis tools and evidence, without
+                                    requiring any model keys.</p>
+                                <div class="tagrow"><span class="tag">stdio MCP</span><span
+                                        class="tag">LLM-free</span><span class="tag">safe-by-default</span></div>
+                                <div style="margin-top:10px;">
+                                    <pre><code>export CODEX_MESH_ENABLE_WEB_UI=1
+export CODEX_MESH_STORAGE_PATH=.codex_mesh
+python -m codex_mesh.api.server</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="feat">
+                                <h3>2) Connect from your agent</h3>
+                                <p>Configure your agent to use MCP tools. Prefer evidence-first prompts and JSON flows
+                                    for reproducible orchestration.</p>
+                                <div class="tagrow"><span class="tag">tools</span><span class="tag">flows</span><span
+                                        class="tag">evidence</span></div>
+                                <div style="margin-top:10px;">
+                                    <pre><code># Typical tool path:
+connect_to_project
+detect_entrypoints
+build_call_graph
+find_path
+read_span</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="feat">
+                                <h3>3) Keep code private</h3>
+                                <p>Use a local/on-prem LLM in your agent, or enforce policies that only allow minimal
+                                    spans to leave the machine.</p>
+                                <div class="tagrow"><span class="tag">local LLM</span><span class="tag">minimize
+                                        data</span><span class="tag">enterprise</span></div>
+                                <div style="margin-top:10px;">
+                                    <pre><code># Best practice:
+- send spans, not full files
+- disable sensitive folders
+- log tool calls</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="feat">
+                                <h3>4) Publish GitHub Pages</h3>
+                                <p>Put this page in <span class="kbd">docs/index.html</span> and enable Pages. Use it as
+                                    your “product page”.</p>
+                                <div class="tagrow"><span class="tag">docs/</span><span class="tag">Pages</span><span
+                                        class="tag">marketing</span></div>
+                                <div style="margin-top:10px;">
+                                    <pre><code># GitHub:
+Settings → Pages → Source: /docs
+# URL:
+https://&lt;user-or-org&gt;.github.io/&lt;repo&gt;</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="note" style="margin-top:8px;">
+                        Tip: make agents include <span class="kbd">path:line-range</span> in outputs so your UI can open
+                        files and highlight the responsible code instantly.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Old 3-column block content is now covered by the carousel above -->
+
+
+            <div class="card" style="margin-top:14px;">
+                <div class="hd">
+                    <b>Links</b>
+                </div>
+                <div class="bd">
+                    <div class="links">
+                        <a href="https://github.com/YLuchaninov/CodexMesh" target="_blank" rel="noreferrer">GitHub
+                            Repo</a>
+                        <a href="https://github.com/YLuchaninov/CodexMesh/issues" target="_blank"
+                            rel="noreferrer">Issues</a>
+                        <a href="mailto:yuriy.luchaninov@gmail.com">Contact</a>
+                    </div>
+                    <div class="note" style="margin-top:10px;">
+                        Best results come from “evidence-first” usage: make agents include <span
+                            class="kbd">path:line-range</span> in outputs so your UI can open and highlight code
+                        instantly.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footgrid">
+                <div>
+                    <p class="small" style="margin-top:10px;max-width:110ch;">
+                        CodexMesh is a portable, LLM-agnostic codebase intelligence layer. It keeps repositories local,
+                        exposes structured MCP tools,
+                        supports partial documentation-aware retrieval, ranks hotspots via graph signals, and enables
+                        agent-grade deterministic JSON flows.
+                    </p>
+                    <div class="small">
+                        © <span id="year"></span> CodexMesh.
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card">
+                        <div class="hd">
+                            <b>Why teams choose CodexMesh</b>
+                            <span class="pill">in one view</span>
+                        </div>
+                        <div class="bd small">
+                            <ul style="margin:0;padding-left:18px;">
+                                <li><b style="color:var(--text);">More correctness:</b> graphs + evidence reduce
+                                    hallucinations.</li>
+                                <li><b style="color:var(--text);">Faster onboarding:</b> entrypoints → call chains →
+                                    data flow.</li>
+                                <li><b style="color:var(--text);">Enterprise-friendly:</b> local MCP + local LLM option
+                                    + minimal data sharing.</li>
+                                <li><b style="color:var(--text);">Works with your agent:</b>
+                                    Cursor/Claude/Copilot/custom orchestration.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        const root = document.documentElement;
+        const themeBtn = document.getElementById('themeBtn');
+
+        const stored = localStorage.getItem('cm_theme');
+        if (stored === 'light' || stored === 'dark') root.setAttribute('data-theme', stored);
+
+        function toggleTheme() {
+            const cur = root.getAttribute('data-theme') || 'dark';
+            const next = cur === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('cm_theme', next);
+        }
+        themeBtn?.addEventListener('click', toggleTheme);
+
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+
+</html>

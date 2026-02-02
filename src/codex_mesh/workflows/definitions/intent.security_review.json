@@ -1,0 +1,48 @@
+{
+    "id": "intent.security_review",
+    "version": 1,
+    "name": "Security review",
+    "description": "Check authentication/authorization, secrets handling, and exposure risks for web/MCP.",
+    "input_schema": {
+        "type": "object",
+        "properties": {}
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "search_code_raw",
+            "params": {
+                "query": "Authorization Bearer jwt oauth fastapi.security middleware api_key token",
+                "limit": 50
+            },
+            "save_as": "hits"
+        },
+        {
+            "action": "tool",
+            "tool_name": "summarize_security_hits",
+            "params": {
+                "matches": "{{hits.matches}}"
+            },
+            "save_as": "sum"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Security review",
+                "",
+                "## Findings",
+                "{{sum.markdown}}",
+                "",
+                "## Recommendations",
+                "- Add optional WEB token auth for /api/* endpoints.",
+                "- Restrict CORS origins in production.",
+                "- Avoid storing LLM API keys in client-side state."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}

@@ -1,0 +1,61 @@
+{
+    "id": "intent.hotspots_report",
+    "version": 1,
+    "name": "Hotspots report",
+    "description": "Return top hotspot areas and explain why they are risky.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "default": ""
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 10
+            }
+        }
+    },
+    "steps": [
+        {
+            "action": "tool",
+            "tool_name": "get_hotspot_raw",
+            "params": {
+                "path": "{{input.path}}"
+            },
+            "save_as": "hot"
+        },
+        {
+            "action": "tool",
+            "tool_name": "summarize_hotspots",
+            "params": {
+                "report": "{{hot}}",
+                "limit": "{{input.limit}}"
+            },
+            "save_as": "sum"
+        },
+        {
+            "action": "compose",
+            "save_as": "answer_md",
+            "template": [
+                "# Hotspots report",
+                "",
+                "## Scope",
+                "- {{input.path}}",
+                "",
+                "## Top hotspots",
+                "{{sum.markdown}}",
+                "",
+                "## Guidance",
+                "- Start refactoring where hotspot score is high AND fan-in is high.",
+                "- Run `intent.change_impact` before changing the top 1–2 hotspots."
+            ]
+        },
+        {
+            "action": "return",
+            "value": "{{answer_md}}"
+        }
+    ]
+}
